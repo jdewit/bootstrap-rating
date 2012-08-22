@@ -34,8 +34,9 @@
         this.$element = $(element);
         this.options = $.extend({}, $.fn.rating.defaults, options, this.$element.data());
         this.starClass = this.options.starClass || this.starClass;
-        this.emptyStarClass = this.options.starClass || this.starClass;
-        this.clearRatingClass = this.options.clearRatingClass || this.clearRatingClass;
+        this.emptyStarClass = this.options.emptyStarClass || this.emptyStarClass;
+        this.clearStarClass = this.options.clearStarClass || this.clearStarClass;
+        this.post = this.options.post || this.post;
         this.init();
     };
 
@@ -45,34 +46,70 @@
 
         , init: function () {
             var $inputs = this.$element.find('input[type=radio]'),
-                score = $this.$element.find('input[type=radio]:checked'),
-                template = '<div class="bootstrap-timepicker"><a class="clear-rating" href="#"><i class="' + this.clearRatingIconClass +'</a></div>',
-                $stars;
+                score = this.$element.find('input[type=radio]:checked').val(),
+                template = '<div class="rating">',
+                starClass = this.starClass,
+                emptyStarClass = this.emptyStarClass,
+                clearStarClass = this.clearStarClass;
 
-            $i = 0;
-            for ($inputs.length) {
-                if (score > $i) { 
-                    var starred = true;
+            $inputs.each(function() {
+                var value = $(this).val();
+
+                if (value == 0) {
+                    template = template + '<a class="clear-stars" href="#" title="Clear stars"><i class="' + clearStarClass +'"></i></a>';
+                } else {
+                    if (value <= score) { 
+                        var iconClass = starClass;
+                    } else {
+                        var iconClass = emptyStarClass;
+                    }
+                    template = template + '<a class="star" href="#" title="'+ $(this).val() + ' stars" data-value="' + $(this).val() + '" data-target="#'+ $(this).attr('id') +'"><i class="'+ iconClass +'"></i></a>';
                 }
-
-                $stars.add('<a class="star" href="#" data-value="' + $inputs.length + '"><i class="' + starred ? this.starClass : this.emptyStarClass + '"></i></a>');
-
-                $i++;
-            }
-
-            this.$widget = this.$element.append(template.append($stars));
-
-            $stars.on('click', $.proxy(this.starClicked, this));
+            });
+            template = template + '</div>';
+            this.$widget = this.$element.parent().append(template);
+            this.$widget.find('a.star').on('click', $.proxy(this.starClick, this));
+            this.$widget.find('a.clear-stars').on('click', $.proxy(this.clearStarsClick, this));
             
         }
-        , starClicked: function(e) {
+        , starClick: function(e) {
             e.preventDefault();
-            
-            var score = this.val();
-            console.log(score);
-            $stars.find('i').removeClass();
-            this.$widget.find('a.star:data(value<='+ score +') i').addClass(this.starClass);
-            this.$widget.find('a.star:data(value>'+ score +') i').addClass(this.emptyStarClass);
+
+            this.clearRadios();
+            $($(e.currentTarget).data('target')).attr('checked', 'checked');
+
+            var score = $(e.currentTarget).data('value');
+
+            this.updateStars(score);
+        }
+        , clearStarsClick: function(e) {
+            e.preventDefault();
+
+            this.clearRadios();
+            this.$element.find('input[type=radio]:first').attr('checked', 'checked');
+
+            this.updateStars(0);
+        }
+        , clearRadios: function() {
+            this.$element.find('input[type="radio"]').attr('checked', false);
+        }
+        , updateStars: function(score) {
+            var starClass = this.starClass,
+                emptyStarClass = this.emptyStarClass;
+
+            this.$widget.find('a.star i').removeClass();
+
+            this.$widget.find('a.star').each(function() {
+                if ($(this).data('value') <= score) {
+                    $(this).find('i').addClass(starClass);
+                } else {
+                    $(this).find('i').addClass(emptyStarClass);
+                }
+            });
+console.log(this.post);
+            if (this.post) {
+                this.$element.parents('form').submit();
+            }
         }
     };
 
@@ -97,6 +134,8 @@
     $.fn.rating.defaults = {
       starClass: 'icon-star'
     , emptyStarClass: 'icon-star-empty'
+    , clearStarClass: 'icon-ban-circle'
+    , post: false
     }
 
     $.fn.rating.Constructor = Rating
